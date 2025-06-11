@@ -3,10 +3,10 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/user";
 import Service from "@/models/service";
+import Booking from "@/models/booking";
 
 export async function POST(request: NextRequest) {
   try {
-    // Solo permitir en desarrollo o con un token especial
     const { seedToken } = await request.json();
     
     if (process.env.NODE_ENV === "production" && seedToken !== process.env.SEED_TOKEN) {
@@ -18,14 +18,12 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // Verificar si ya existen usuarios
-    const existingUsers = await User.countDocuments();
-    if (existingUsers > 0) {
-      return NextResponse.json(
-        { error: "La base de datos ya tiene usuarios. Use /api/seed/force para forzar." },
-        { status: 400 }
-      );
-    }
+    // Limpiar todas las colecciones
+    await Promise.all([
+      User.deleteMany({}),
+      Service.deleteMany({}),
+      Booking.deleteMany({})
+    ]);
 
     // Crear contraseñas hasheadas
     const adminPassword = bcrypt.hashSync("123456", 12);
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     const createdUsers = await User.insertMany(users);
 
-    // Crear algunos servicios básicos
+    // Crear servicios básicos
     const services = [
       {
         name: "Masaje Relajante",
@@ -102,6 +100,24 @@ export async function POST(request: NextRequest) {
         price: 12000,
         duration: 90,
         isActive: true,
+      },
+      {
+        name: "Masaje Descontracturante",
+        description: "Masaje terapéutico profundo",
+        category: "Masajes",
+        subcategory: "Terapéutico",
+        price: 9500,
+        duration: 90,
+        isActive: true,
+      },
+      {
+        name: "Limpieza de Cutis Profunda",
+        description: "Limpieza facial completa con extracciones",
+        category: "Faciales",
+        subcategory: "Limpieza",
+        price: 8000,
+        duration: 60,
+        isActive: true,
       }
     ];
 
@@ -109,7 +125,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Base de datos inicializada exitosamente",
+      message: "Base de datos reinicializada exitosamente",
+      cleared: {
+        users: true,
+        services: true,
+        bookings: true
+      },
       created: {
         users: createdUsers.length,
         services: createdServices.length
@@ -123,10 +144,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error seeding database:", error);
+    console.error("Error force seeding database:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     );
   }
-}
+} 
