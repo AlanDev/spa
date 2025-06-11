@@ -15,32 +15,37 @@ export default function ServiciosPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="text-center mb-12">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
           <div className="flex-1">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Nuestros Servicios</h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Nuestros Servicios</h1>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
               Descubre nuestra amplia gama de tratamientos diseñados para tu bienestar y relajación
             </p>
           </div>
           
           {isDraAnaFelicidad && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
               <Button 
                 asChild
-                className="bg-green-500 hover:bg-green-600"
+                className="bg-green-500 hover:bg-green-600 text-sm"
+                size="sm"
               >
                 <Link href="/admin/servicios/nuevo">
                   <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Servicio
+                  <span className="hidden sm:inline">Nuevo Servicio</span>
+                  <span className="sm:hidden">Nuevo</span>
                 </Link>
               </Button>
               <Button 
                 asChild
                 variant="outline"
+                size="sm"
+                className="text-sm"
               >
                 <Link href="/admin/servicios">
                   <Settings className="h-4 w-4 mr-2" />
-                  Gestionar
+                  <span className="hidden sm:inline">Gestionar</span>
+                  <span className="sm:hidden">Admin</span>
                 </Link>
               </Button>
             </div>
@@ -49,12 +54,25 @@ export default function ServiciosPage() {
       </div>
 
       <Tabs defaultValue="masajes" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8">
-          <TabsTrigger value="masajes" className="text-sm">Masajes</TabsTrigger>
-          <TabsTrigger value="belleza" className="text-sm">Belleza</TabsTrigger>
-          <TabsTrigger value="faciales" className="text-sm">Tratamientos Faciales</TabsTrigger>
-          <TabsTrigger value="corporales" className="text-sm">Tratamientos Corporales</TabsTrigger>
-          <TabsTrigger value="grupales" className="text-sm">Servicios Grupales</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 mb-8 h-auto p-1">
+          <TabsTrigger value="masajes" className="text-xs sm:text-sm py-2 sm:py-1.5">
+            Masajes
+          </TabsTrigger>
+          <TabsTrigger value="belleza" className="text-xs sm:text-sm py-2 sm:py-1.5">
+            Belleza
+          </TabsTrigger>
+          <TabsTrigger value="faciales" className="text-xs sm:text-sm py-2 sm:py-1.5 col-span-2 sm:col-span-1">
+            <span className="hidden sm:inline">Tratamientos Faciales</span>
+            <span className="sm:hidden">Faciales</span>
+          </TabsTrigger>
+          <TabsTrigger value="corporales" className="text-xs sm:text-sm py-2 sm:py-1.5 col-span-2 sm:col-span-1">
+            <span className="hidden sm:inline">Tratamientos Corporales</span>
+            <span className="sm:hidden">Corporales</span>
+          </TabsTrigger>
+          <TabsTrigger value="grupales" className="text-xs sm:text-sm py-2 sm:py-1.5 col-span-2 sm:col-span-1">
+            <span className="hidden sm:inline">Servicios Grupales</span>
+            <span className="sm:hidden">Grupales</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="masajes">
