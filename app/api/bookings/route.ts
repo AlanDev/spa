@@ -123,21 +123,39 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Servicio encontrado: ${service.name} - $${service.price}`);
 
     // Verificar que la fecha es válida (no en el pasado)
-    // Usar construcción local para evitar problemas de zona horaria
-    const [year, month, day] = date.split('-').map(Number);
-    const bookingDate = new Date(year, month - 1, day); // month - 1 porque los meses en JS van de 0-11
+    let bookingDate: Date;
+    
+    // Detectar si es fecha ISO o formato YYYY-MM-DD
+    if (date.includes('T')) {
+      // Es una fecha ISO (2024-01-15T14:30:00.000Z)
+      bookingDate = new Date(date);
+      console.log('📅 Fecha ISO detectada:', date);
+    } else {
+      // Es formato YYYY-MM-DD
+      const [year, month, day] = date.split('-').map(Number);
+      bookingDate = new Date(year, month - 1, day); // month - 1 porque los meses en JS van de 0-11
+      console.log('📅 Fecha YYYY-MM-DD detectada:', date);
+    }
+    
     const now = new Date();
     now.setHours(0, 0, 0, 0); // Comparar solo fechas, no horas
     
-    if (bookingDate < now) {
+    const bookingDateComparison = new Date(bookingDate);
+    bookingDateComparison.setHours(0, 0, 0, 0); // Para comparar solo la fecha
+    
+    console.log('📊 Comparando fechas - Reserva:', bookingDateComparison.toISOString(), 'Hoy:', now.toISOString());
+    
+    if (bookingDateComparison < now) {
       return NextResponse.json(
         { error: "No se pueden hacer reservas en el pasado" },
         { status: 400 }
       );
     }
 
-    // Verificar restricción de 48 horas
-    const hoursDifference = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    // Verificar restricción de 48 horas    
+    const hoursDifference = (bookingDateComparison.getTime() - now.getTime()) / (1000 * 60 * 60);
+    console.log('⏰ Diferencia en horas:', hoursDifference);
+    
     if (hoursDifference < 48) {
       return NextResponse.json(
         { error: "Las reservas deben hacerse con al menos 48 horas de anticipación" },
