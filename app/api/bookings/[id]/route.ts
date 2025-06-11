@@ -57,12 +57,26 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Validar nueva fecha y hora
     if (date && timeSlot) {
       // Crear fecha local sin problemas de zona horaria
-      const [year, month, day] = date.split('-').map(Number);
-      const newDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      let newDate: Date;
+      
+      console.log('📅 Reprogramando - Fecha recibida:', date);
+      
+      // Detectar si es fecha ISO o formato YYYY-MM-DD
+      if (date.includes('T')) {
+        // Es una fecha ISO (2024-01-15T14:30:00.000Z)
+        newDate = new Date(date);
+        console.log('📅 PATCH - Fecha ISO detectada:', date);
+      } else {
+        // Es formato YYYY-MM-DD
+        const [year, month, day] = date.split('-').map(Number);
+        newDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+        console.log('📅 PATCH - Fecha YYYY-MM-DD detectada:', date);
+      }
       
       // Para la validación de tiempo, usar la hora seleccionada
       const [hours, minutes] = timeSlot.split(':').map(Number);
-      const newDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      const newDateTime = new Date(newDate);
+      newDateTime.setHours(hours, minutes, 0, 0);
       const now = new Date();
       
       // Verificar que la nueva fecha es válida
@@ -154,13 +168,33 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Si se está reprogramando
     if (status === "rescheduled" && date) {
+      console.log('📅 PUT - Reprogramando - Fecha recibida:', date);
+      
       // Crear fecha local sin problemas de zona horaria
-      const [year, month, day] = date.split('-').map(Number);
-      const newDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      let newDate: Date;
+      
+      // Detectar si es fecha ISO o formato YYYY-MM-DD
+      if (date.includes('T')) {
+        // Es una fecha ISO (2024-01-15T14:30:00.000Z)
+        newDate = new Date(date);
+        console.log('📅 PUT - Fecha ISO detectada:', date);
+      } else {
+        // Es formato YYYY-MM-DD
+        const [year, month, day] = date.split('-').map(Number);
+        newDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+        console.log('📅 PUT - Fecha YYYY-MM-DD detectada:', date);
+      }
+      
       const now = new Date();
       
       // Verificar que la nueva fecha es válida
-      if (newDate <= now) {
+      const newDateComparison = new Date(newDate);
+      newDateComparison.setHours(0, 0, 0, 0); // Para comparar solo la fecha
+      now.setHours(0, 0, 0, 0); // Para comparar solo la fecha
+      
+      console.log('📊 PUT - Comparando fechas - Nueva:', newDateComparison.toISOString(), 'Hoy:', now.toISOString());
+      
+      if (newDateComparison <= now) {
         return NextResponse.json(
           { error: "No se puede reprogramar para el pasado" },
           { status: 400 }
@@ -168,7 +202,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
 
       // Verificar restricción de 48 horas
-      const hoursDifference = (newDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const hoursDifference = (newDateComparison.getTime() - now.getTime()) / (1000 * 60 * 60);
+      console.log('⏰ PUT - Diferencia en horas:', hoursDifference);
+      
       if (hoursDifference < 48) {
         return NextResponse.json(
           { error: "Las reprogramaciones deben hacerse con al menos 48 horas de anticipación" },
