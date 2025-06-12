@@ -296,6 +296,7 @@ export default function ChatBot() {
 
   const generateServiceOptions = (): ChatOption[] => {
     const categories = Object.keys(servicesData);
+    console.log('Generating service options for categories:', categories);
     return categories.map(category => ({
       id: category.toLowerCase(),
       text: `${getCategoryIcon(category)} ${category}`,
@@ -456,13 +457,15 @@ export default function ChatBot() {
     setMessages(prev => [...prev, userMessage, botMessage]);
 
     // Actualizar opciones
-    if (option.followUp) {
+    if (option.followUp && option.followUp.length > 0) {
       setCurrentOptions(option.followUp);
       setIsInSubMenu(true);
     } else {
       // Mostrar opciones principales después de responder
       setTimeout(() => {
-        setCurrentOptions([...getQuickActions(), ...getCurrentMainOptions()]);
+        const mainOptions = getCurrentMainOptions();
+        const quickActions = getQuickActions();
+        setCurrentOptions([...quickActions, ...mainOptions]);
         setIsInSubMenu(false);
       }, 1500);
     }
@@ -471,12 +474,17 @@ export default function ChatBot() {
   const getCurrentMainOptions = (): ChatOption[] => {
     if (!businessConfig) return [];
     
+    // Generar opciones de servicios solo si hay datos disponibles
+    const serviceOptions = Object.keys(servicesData).length > 0 
+      ? generateServiceOptions() 
+      : [];
+    
     return [
       {
         id: "servicios",
         text: "🌸 ¿Qué servicios ofrecen?",
         response: "Cargando servicios...",
-        followUp: generateServiceOptions()
+        followUp: serviceOptions
       },
       {
         id: "horarios",
@@ -530,7 +538,12 @@ export default function ChatBot() {
     };
 
     setMessages(prev => [...prev, backMessage, botResponse]);
-    setCurrentOptions(getCurrentMainOptions());
+    
+    // Asegurar que se cargan las opciones principales correctamente
+    const mainOptions = getCurrentMainOptions();
+    const quickActions = getQuickActions();
+    
+    setCurrentOptions([...quickActions, ...mainOptions]);
     setIsInSubMenu(false);
   };
 
