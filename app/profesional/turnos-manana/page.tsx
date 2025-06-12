@@ -52,7 +52,8 @@ export default function TurnosMananaPage() {
     try {
       if (!user?.id) return;
       
-      const response = await fetch(`/api/professional/bookings?professionalId=${user.id}&date=${tomorrowDate}`);
+      // La API espera startDate y endDate en formato YYYY-MM-DD
+      const response = await fetch(`/api/professional/bookings?professionalId=${user.id}&startDate=${tomorrowDate}&endDate=${tomorrowDate}`);
       const data = await response.json();
       
       if (response.ok) {
