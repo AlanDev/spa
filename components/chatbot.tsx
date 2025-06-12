@@ -53,6 +53,41 @@ interface BusinessConfig {
   };
 }
 
+// Datos de fallback si fallan las APIs
+const fallbackConfig = {
+  name: "Spa Sentirse Bien",
+  contact: {
+    phone: "(3624) 123456",
+    whatsapp: "(3624) 123456",
+    email: "info@spasentirsebien.com"
+  },
+  location: {
+    address: "French 414",
+    city: "Resistencia",
+    province: "Chaco",
+    details: [
+      "Universidad Tecnológica Nacional",
+      "Facultad Regional Resistencia"
+    ]
+  },
+  businessHours: {
+    monday: { open: "09:00", close: "19:00", isOpen: true },
+    tuesday: { open: "09:00", close: "19:00", isOpen: true },
+    wednesday: { open: "09:00", close: "19:00", isOpen: true },
+    thursday: { open: "09:00", close: "19:00", isOpen: true },
+    friday: { open: "09:00", close: "19:00", isOpen: true },
+    saturday: { open: "09:00", close: "18:00", isOpen: true },
+    sunday: { open: "10:00", close: "17:00", isOpen: true }
+  },
+  chatbotMessages: {
+    welcome: "¡Hola! 👋 Bienvenido/a a Spa Sentirse Bien. Soy tu asistente virtual y estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?",
+    servicesIntro: "Ofrecemos una amplia gama de tratamientos de relajación y belleza. ¿Te interesa algún servicio en particular?",
+    reservationInstructions: "Es muy fácil reservar tu cita:\n\n1️⃣ Regístrate en nuestra página\n2️⃣ Ve a la sección 'Servicios'\n3️⃣ Elige tu tratamiento favorito\n4️⃣ Selecciona fecha y hora\n5️⃣ ¡Confirma tu reserva!",
+    contactInfo: "¡Estamos aquí para ayudarte! 💜",
+    locationInfo: "¡Te esperamos en nuestro oasis de relajación!"
+  }
+};
+
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -82,138 +117,84 @@ export default function ChatBot() {
     try {
       setIsLoading(true);
       
-      // Primero, establecer opciones básicas inmediatamente
-      const basicOptions: ChatOption[] = [
-        {
-          id: "servicios",
-          text: "🌸 ¿Qué servicios ofrecen?",
-          response: "Cargando servicios..."
-        },
-        {
-          id: "horarios",
-          text: "🕐 ¿Cuáles son los horarios?",
-          response: "Cargando horarios..."
-        },
-        {
-          id: "reservas", 
-          text: "📅 ¿Cómo reservo una cita?",
-          response: "Cargando información de reservas..."
-        },
-        {
-          id: "precios",
-          text: "💰 ¿Cuáles son los precios?",
-          response: "Cargando precios actualizados..."
-        },
-        {
-          id: "ubicacion",
-          text: "📍 ¿Dónde están ubicados?",
-          response: "Cargando información de ubicación..."
-        },
-        {
-          id: "contacto",
-          text: "📞 Información de contacto",
-          response: "Cargando información de contacto..."
-        }
-      ];
-      
+      // Establecer opciones básicas inmediatamente (SIEMPRE)
+      const basicOptions = getBasicOptions();
       setCurrentOptions(basicOptions);
       
-      // Cargar configuración del negocio y servicios en paralelo
-      const [configResponse, servicesResponse] = await Promise.all([
-        fetch('/api/business-config'),
-        fetch('/api/services')
-      ]);
+      // Establecer mensaje de bienvenida por defecto
+      setMessages([{
+        id: 1,
+        text: fallbackConfig.chatbotMessages.welcome,
+        isBot: true,
+        timestamp: new Date()
+      }]);
 
-      let config = null;
-      let services = {};
+      // Intentar cargar datos de APIs
+      try {
+        const [configResponse, servicesResponse] = await Promise.all([
+          fetch('/api/business-config'),
+          fetch('/api/services')
+        ]);
 
-      if (configResponse.ok) {
-        config = await configResponse.json();
-        setBusinessConfig(config);
-        
-        // Establecer mensaje de bienvenida
-        setMessages([{
-          id: 1,
-          text: config.chatbotMessages?.welcome || "¡Hola! 👋 Bienvenido/a a Spa Sentirse Bien. Soy tu asistente virtual y estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?",
-          isBot: true,
-          timestamp: new Date()
-        }]);
-      } else {
-        // Si no se puede cargar la config, usar valores por defecto
-        setMessages([{
-          id: 1,
-          text: "¡Hola! 👋 Bienvenido/a a Spa Sentirse Bien. Soy tu asistente virtual y estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?",
-          isBot: true,
-          timestamp: new Date()
-        }]);
-      }
-
-      if (servicesResponse.ok) {
-        services = await servicesResponse.json();
-        setServicesData(services);
-        
-        // Actualizar opciones de servicios si hay datos
-        if (Object.keys(services).length > 0) {
-          const serviceOptions = Object.keys(services).map(category => ({
-            id: category.toLowerCase(),
-            text: `${getCategoryIcon(category)} ${category}`,
-            response: `Cargando precios de ${category.toLowerCase()}...`
-          }));
+        // Cargar configuración si está disponible
+        if (configResponse.ok) {
+          const config = await configResponse.json();
+          setBusinessConfig(config);
           
-          // Actualizar la opción de servicios con sus subcategorías
-          const updatedOptions = basicOptions.map(option => {
-            if (option.id === "servicios") {
-              return { ...option, followUp: serviceOptions };
-            }
-            return option;
-          });
-          
-          setCurrentOptions(updatedOptions);
+          // Actualizar mensaje de bienvenida con datos reales
+          setMessages([{
+            id: 1,
+            text: config.chatbotMessages?.welcome || fallbackConfig.chatbotMessages.welcome,
+            isBot: true,
+            timestamp: new Date()
+          }]);
         }
+
+        // Cargar servicios si están disponibles
+        if (servicesResponse.ok) {
+          const services = await servicesResponse.json();
+          setServicesData(services);
+          
+          // Actualizar opciones con servicios reales
+          if (Object.keys(services).length > 0) {
+            const updatedOptions = getBasicOptions(services);
+            setCurrentOptions(updatedOptions);
+          }
+        }
+        
+      } catch (apiError) {
+        console.error('API Error:', apiError);
+        // Las opciones básicas ya están establecidas, no hacemos nada más
       }
       
     } catch (error) {
       console.error('Error loading chatbot data:', error);
-      // Mensaje de error pero mantener opciones básicas
+      // Incluso en caso de error total, mantenemos opciones básicas
+      const basicOptions = getBasicOptions();
+      setCurrentOptions(basicOptions);
+      
       setMessages([{
         id: 1,
         text: "¡Hola! 👋 Hay algunos problemas cargando información, pero puedo ayudarte con lo básico.",
         isBot: true,
         timestamp: new Date()
       }]);
-      
-      // Mantener opciones básicas en caso de error
-      const basicOptions: ChatOption[] = [
-        {
-          id: "servicios",
-          text: "🌸 ¿Qué servicios ofrecen?",
-          response: "Lo siento, no puedo cargar los servicios en este momento."
-        },
-        {
-          id: "contacto",
-          text: "📞 Información de contacto",
-          response: "Puedes contactarnos al (3624) 123456 o por email a info@spasentirsebien.com"
-        },
-        {
-          id: "ubicacion",
-          text: "📍 ¿Dónde están ubicados?",
-          response: "Nos encontramos en UTN Resistencia - French 414, Resistencia, Chaco"
-        }
-      ];
-      
-      setCurrentOptions(basicOptions);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateChatOptionsWithData = (config: BusinessConfig, services: ServicesByCategory) => {
-    const options: ChatOption[] = [
+  const getBasicOptions = (services?: ServicesByCategory): ChatOption[] => {
+    const serviceOptions = services && Object.keys(services).length > 0 
+      ? generateServiceOptions(services)
+      : [];
+
+    return [
       {
         id: "servicios",
         text: "🌸 ¿Qué servicios ofrecen?",
         response: "Cargando servicios...",
-        followUp: generateServiceOptionsWithData(services)
+        followUp: serviceOptions
       },
       {
         id: "horarios",
@@ -241,62 +222,10 @@ export default function ChatBot() {
         response: "Cargando información de contacto..."
       }
     ];
-
-    setCurrentOptions(options);
   };
 
-  const generateChatOptions = () => {
-    if (!businessConfig) return;
-
-    const options: ChatOption[] = [
-      {
-        id: "servicios",
-        text: "🌸 ¿Qué servicios ofrecen?",
-        response: "Cargando servicios...",
-        followUp: generateServiceOptions()
-      },
-      {
-        id: "horarios",
-        text: "🕐 ¿Cuáles son los horarios?",
-        response: "Cargando horarios..."
-      },
-      {
-        id: "reservas",
-        text: "📅 ¿Cómo reservo una cita?",
-        response: "Cargando información de reservas..."
-      },
-      {
-        id: "precios",
-        text: "💰 ¿Cuáles son los precios?",
-        response: "Cargando precios actualizados..."
-      },
-      {
-        id: "ubicacion",
-        text: "📍 ¿Dónde están ubicados?",
-        response: "Cargando información de ubicación..."
-      },
-      {
-        id: "contacto",
-        text: "📞 Información de contacto",
-        response: "Cargando información de contacto..."
-      }
-    ];
-
-    setCurrentOptions(options);
-  };
-
-  const generateServiceOptionsWithData = (services: ServicesByCategory): ChatOption[] => {
+  const generateServiceOptions = (services: ServicesByCategory): ChatOption[] => {
     const categories = Object.keys(services);
-    return categories.map(category => ({
-      id: category.toLowerCase(),
-      text: `${getCategoryIcon(category)} ${category}`,
-      response: `Cargando precios de ${category.toLowerCase()}...`
-    }));
-  };
-
-  const generateServiceOptions = (): ChatOption[] => {
-    const categories = Object.keys(servicesData);
-    console.log('Generating service options for categories:', categories);
     return categories.map(category => ({
       id: category.toLowerCase(),
       text: `${getCategoryIcon(category)} ${category}`,
@@ -317,8 +246,8 @@ export default function ChatBot() {
   };
 
   const formatBusinessHours = (): string => {
-    if (!businessConfig) return "Horarios no disponibles";
-
+    const config = businessConfig || fallbackConfig;
+    
     const dayNames: { [key: string]: string } = {
       monday: "Lunes",
       tuesday: "Martes", 
@@ -331,7 +260,7 @@ export default function ChatBot() {
 
     let hoursText = "Nuestros horarios de atención son:\n\n";
     
-    Object.entries(businessConfig.businessHours).forEach(([day, hours]) => {
+    Object.entries(config.businessHours).forEach(([day, hours]) => {
       if (hours.isOpen) {
         hoursText += `📅 ${dayNames[day]}: ${hours.open} - ${hours.close}\n`;
       } else {
@@ -344,35 +273,35 @@ export default function ChatBot() {
   };
 
   const formatLocationInfo = (): string => {
-    if (!businessConfig) return "Información de ubicación no disponible";
+    const config = businessConfig || fallbackConfig;
 
     let locationText = "Nos encontramos en:\n\n";
     
-    businessConfig.location.details.forEach(detail => {
+    config.location.details.forEach(detail => {
       locationText += `📍 ${detail}\n`;
     });
     
-    locationText += `📍 ${businessConfig.location.address}, ${businessConfig.location.city}, ${businessConfig.location.province}\n\n`;
-    locationText += businessConfig.chatbotMessages.locationInfo;
+    locationText += `📍 ${config.location.address}, ${config.location.city}, ${config.location.province}\n\n`;
+    locationText += config.chatbotMessages?.locationInfo || fallbackConfig.chatbotMessages.locationInfo;
     
     return locationText;
   };
 
   const formatContactInfo = (): string => {
-    if (!businessConfig) return "Información de contacto no disponible";
+    const config = businessConfig || fallbackConfig;
 
-    return `Contáctanos por cualquiera de estos medios:\n\n📞 Teléfono: ${businessConfig.contact.phone}\n📱 WhatsApp: ${businessConfig.contact.whatsapp}\n📧 Email: ${businessConfig.contact.email}\n📍 ${businessConfig.location.address}, ${businessConfig.location.city}\n\n${businessConfig.chatbotMessages.contactInfo}`;
+    return `Contáctanos por cualquiera de estos medios:\n\n📞 Teléfono: ${config.contact.phone}\n📱 WhatsApp: ${config.contact.whatsapp}\n📧 Email: ${config.contact.email}\n📍 ${config.location.address}, ${config.location.city}\n\n${config.chatbotMessages?.contactInfo || fallbackConfig.chatbotMessages.contactInfo}`;
   };
 
   const formatReservationInfo = (): string => {
-    if (!businessConfig) return "Información de reservas no disponible";
+    const config = businessConfig || fallbackConfig;
 
-    return `${businessConfig.chatbotMessages.reservationInstructions}\n\nTambién puedes llamarnos al ${businessConfig.contact.phone} 📞`;
+    return `${config.chatbotMessages?.reservationInstructions || fallbackConfig.chatbotMessages.reservationInstructions}\n\nTambién puedes llamarnos al ${config.contact.phone} 📞`;
   };
 
   const formatServicesResponse = (category?: string) => {
     if (Object.keys(servicesData).length === 0) {
-      return "Lo siento, no pude cargar los servicios en este momento. Por favor intenta más tarde.";
+      return "Lo siento, no pude cargar los servicios en este momento. Sin embargo, ofrecemos una amplia gama de tratamientos:\n\n🌟 Masajes relajantes y terapéuticos\n🌟 Tratamientos faciales\n🌟 Tratamientos corporales\n🌟 Manicura y pedicura\n\nPara más información llámanos al (3624) 123456";
     }
 
     if (category) {
@@ -389,7 +318,10 @@ export default function ChatBot() {
       return response;
     } else {
       // Mostrar todos los servicios agrupados
-      let response = businessConfig?.chatbotMessages.servicesIntro || "Nuestros servicios disponibles:\n\n";
+      const config = businessConfig || fallbackConfig;
+      let response = config.chatbotMessages?.servicesIntro || fallbackConfig.chatbotMessages.servicesIntro;
+      response += "\n\n";
+      
       Object.entries(servicesData).forEach(([category, services]) => {
         response += `🌟 ${category.toUpperCase()}\n`;
         services.forEach(service => {
@@ -404,7 +336,7 @@ export default function ChatBot() {
 
   const formatPricesResponse = () => {
     if (Object.keys(servicesData).length === 0) {
-      return "Lo siento, no pude cargar los precios en este momento. Por favor intenta más tarde.";
+      return "Nuestros precios son muy competitivos:\n\n💆‍♀️ Masajes: desde $8,000\n✨ Faciales: desde $6,000\n💅 Manicura: desde $4,000\n\nPara precios exactos llámanos al (3624) 123456\n\n¡Consulta por nuestros paquetes especiales con descuentos!";
     }
 
     let response = "Nuestros precios actualizados:\n\n";
@@ -456,62 +388,19 @@ export default function ChatBot() {
 
     setMessages(prev => [...prev, userMessage, botMessage]);
 
-    // Actualizar opciones
+    // Actualizar opciones - SIEMPRE mostrar opciones después de responder
     if (option.followUp && option.followUp.length > 0) {
       setCurrentOptions(option.followUp);
       setIsInSubMenu(true);
     } else {
       // Mostrar opciones principales después de responder
       setTimeout(() => {
-        const mainOptions = getCurrentMainOptions();
+        const mainOptions = getBasicOptions(servicesData);
         const quickActions = getQuickActions();
         setCurrentOptions([...quickActions, ...mainOptions]);
         setIsInSubMenu(false);
       }, 1500);
     }
-  };
-
-  const getCurrentMainOptions = (): ChatOption[] => {
-    if (!businessConfig) return [];
-    
-    // Generar opciones de servicios solo si hay datos disponibles
-    const serviceOptions = Object.keys(servicesData).length > 0 
-      ? generateServiceOptions() 
-      : [];
-    
-    return [
-      {
-        id: "servicios",
-        text: "🌸 ¿Qué servicios ofrecen?",
-        response: "Cargando servicios...",
-        followUp: serviceOptions
-      },
-      {
-        id: "horarios",
-        text: "🕐 ¿Cuáles son los horarios?",
-        response: "Cargando horarios..."
-      },
-      {
-        id: "reservas",
-        text: "📅 ¿Cómo reservo una cita?",
-        response: "Cargando información de reservas..."
-      },
-      {
-        id: "precios",
-        text: "💰 ¿Cuáles son los precios?",
-        response: "Cargando precios actualizados..."
-      },
-      {
-        id: "ubicacion",
-        text: "📍 ¿Dónde están ubicados?",
-        response: "Cargando información de ubicación..."
-      },
-      {
-        id: "contacto",
-        text: "📞 Información de contacto",
-        response: "Cargando información de contacto..."
-      }
-    ];
   };
 
   const getQuickActions = (): ChatOption[] => [
@@ -540,7 +429,7 @@ export default function ChatBot() {
     setMessages(prev => [...prev, backMessage, botResponse]);
     
     // Asegurar que se cargan las opciones principales correctamente
-    const mainOptions = getCurrentMainOptions();
+    const mainOptions = getBasicOptions(servicesData);
     const quickActions = getQuickActions();
     
     setCurrentOptions([...quickActions, ...mainOptions]);
@@ -548,17 +437,18 @@ export default function ChatBot() {
   };
 
   const resetChat = () => {
-    if (businessConfig) {
-      setMessages([
-        {
-          id: 1,
-          text: businessConfig.chatbotMessages.welcome,
-          isBot: true,
-          timestamp: new Date()
-        }
-      ]);
-    }
-    setCurrentOptions(getCurrentMainOptions());
+    const config = businessConfig || fallbackConfig;
+    setMessages([
+      {
+        id: 1,
+        text: config.chatbotMessages?.welcome || fallbackConfig.chatbotMessages.welcome,
+        isBot: true,
+        timestamp: new Date()
+      }
+    ]);
+    
+    const mainOptions = getBasicOptions(servicesData);
+    setCurrentOptions(mainOptions);
     setIsInSubMenu(false);
   };
 
@@ -604,7 +494,7 @@ export default function ChatBot() {
                 <div className="flex items-center gap-2">
                   <Bot className="h-5 w-5" />
                   <CardTitle className="text-sm md:text-base">
-                    {businessConfig?.name ? `${businessConfig.name} - Asistente` : 'Asistente Spa'}
+                    {businessConfig?.name || fallbackConfig.name} - Asistente
                   </CardTitle>
                 </div>
                 <div className="flex gap-1">
@@ -678,7 +568,7 @@ export default function ChatBot() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Botones de opciones */}
+              {/* Botones de opciones - SIEMPRE mostrar si no está cargando */}
               {!isLoading && (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {/* Botón de volver si estamos en submenú */}
