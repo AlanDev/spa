@@ -5,28 +5,41 @@ import Service from "@/models/service"
 import User from "@/models/user"
 
 // GET - Obtener todos los servicios activos
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase()
     
-    const services = await Service.find({ isActive: true })
-      .select('name category price duration')
-      .sort({ category: 1, price: 1 })
+    const { searchParams } = new URL(request.url)
+    const format = searchParams.get('format') // 'grouped' para chatbot, por defecto lista normal
     
-    // Agrupar servicios por categoría
-    const servicesByCategory = services.reduce((acc: any, service) => {
-      if (!acc[service.category]) {
-        acc[service.category] = []
-      }
-      acc[service.category].push({
-        name: service.name,
-        price: service.price,
-        duration: service.duration
-      })
-      return acc
-    }, {})
-    
-    return NextResponse.json(servicesByCategory)
+    if (format === 'grouped') {
+      // Formato para chatbot - servicios agrupados por categoría
+      const services = await Service.find({ isActive: true })
+        .select('name category price duration')
+        .sort({ category: 1, price: 1 })
+      
+      // Agrupar servicios por categoría
+      const servicesByCategory = services.reduce((acc: any, service) => {
+        if (!acc[service.category]) {
+          acc[service.category] = []
+        }
+        acc[service.category].push({
+          name: service.name,
+          price: service.price,
+          duration: service.duration
+        })
+        return acc
+      }, {})
+      
+      return NextResponse.json(servicesByCategory)
+    } else {
+      // Formato original - lista completa con detalles
+      const services = await Service.find({ isActive: true })
+        .populate("professionals", "firstName lastName professionalData.specialties")
+        .sort({ category: 1, name: 1 })
+
+      return NextResponse.json({ services })
+    }
   } catch (error) {
     console.error("Error fetching services:", error)
     return NextResponse.json(

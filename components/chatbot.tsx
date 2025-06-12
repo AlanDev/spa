@@ -133,7 +133,7 @@ export default function ChatBot() {
       try {
         const [configResponse, servicesResponse] = await Promise.all([
           fetch('/api/business-config'),
-          fetch('/api/services')
+          fetch('/api/services?format=grouped')
         ]);
 
         // Cargar configuración si está disponible
