@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
+import ChatBot from "@/components/chatbot";
 
 export default function Home() {
   return (
@@ -264,6 +265,9 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {/* ChatBot flotante */}
+      <ChatBot />
     </div>
   );
 }

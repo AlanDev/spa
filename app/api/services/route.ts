@@ -8,16 +8,29 @@ import User from "@/models/user"
 export async function GET() {
   try {
     await connectToDatabase()
-
+    
     const services = await Service.find({ isActive: true })
-      .populate("professionals", "firstName lastName professionalData.specialties")
-      .sort({ category: 1, name: 1 })
-
-    return NextResponse.json({ services })
+      .select('name category price duration')
+      .sort({ category: 1, price: 1 })
+    
+    // Agrupar servicios por categoría
+    const servicesByCategory = services.reduce((acc: any, service) => {
+      if (!acc[service.category]) {
+        acc[service.category] = []
+      }
+      acc[service.category].push({
+        name: service.name,
+        price: service.price,
+        duration: service.duration
+      })
+      return acc
+    }, {})
+    
+    return NextResponse.json(servicesByCategory)
   } catch (error) {
     console.error("Error fetching services:", error)
     return NextResponse.json(
-      { error: "Error interno del servidor" },
+      { error: "Error al obtener servicios" }, 
       { status: 500 }
     )
   }
