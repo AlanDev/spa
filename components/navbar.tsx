@@ -57,6 +57,7 @@ export default function Navbar() {
         { href: "/", label: "Inicio" },
         { href: "/servicios", label: "Servicios" },
         { href: "/profesional/agenda", label: "Mi Agenda", icon: Calendar },
+        { href: "/profesional/historial-cliente", label: "Historial Clientes", icon: FileText },
         { href: "/profesional/turnos-manana", label: "Turnos Mañana" }
       ];
     }

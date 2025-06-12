@@ -2,14 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Clock, User, DollarSign, CheckCircle, XCircle, Edit, CalendarRange } from "lucide-react";
+import { Calendar, Clock, User, DollarSign, CheckCircle, XCircle, Edit, CalendarRange, FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
+import Link from "next/link";
 
 interface Booking {
   _id: string;
   userName: string;
+  userId: string;
   services: Array<{
     serviceName: string;
     servicePrice: number;
@@ -24,12 +30,23 @@ interface Booking {
     paid: boolean;
   };
   notes?: string;
+  treatmentNotes?: {
+    notes: string;
+    addedAt: string;
+    addedByName: string;
+  };
 }
 
 export default function MiAgendaPage() {
   const { user, isProfesional } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para el modal de notas
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [treatmentNotes, setTreatmentNotes] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   
   // Fechas por defecto: hoy hasta en 7 días
   const today = new Date().toISOString().split('T')[0];
@@ -93,10 +110,73 @@ export default function MiAgendaPage() {
 
       if (response.ok) {
         fetchBookings(); // Refresh the list
+        
+        // Si se completa la reserva, abrir modal para agregar notas
+        if (newStatus === 'completed') {
+          const completedBooking = bookings.find(b => b._id === bookingId);
+          if (completedBooking) {
+            setSelectedBooking(completedBooking);
+            setTreatmentNotes(completedBooking.treatmentNotes?.notes || "");
+            setIsModalOpen(true);
+          }
+        }
       }
     } catch (error) {
       console.error('Error updating booking:', error);
     }
+  };
+
+  const saveTreatmentNotes = async () => {
+    if (!selectedBooking || !treatmentNotes.trim()) {
+      toast({
+        title: "Error",
+        description: "Las notas del tratamiento son requeridas",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingNotes(true);
+    try {
+      const method = selectedBooking.treatmentNotes ? 'PUT' : 'POST';
+      const response = await fetch(`/api/professional/bookings/${selectedBooking._id}/treatment-notes`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: treatmentNotes.trim() })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Notas del tratamiento guardadas correctamente",
+        });
+        setIsModalOpen(false);
+        setSelectedBooking(null);
+        setTreatmentNotes("");
+        fetchBookings(); // Refresh to show the new notes
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Error",
+          description: data.error || "Error al guardar las notas",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al guardar las notas del tratamiento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const openNotesModal = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setTreatmentNotes(booking.treatmentNotes?.notes || "");
+    setIsModalOpen(true);
   };
 
   const formatCurrency = (amount: number) => {
@@ -311,6 +391,16 @@ export default function MiAgendaPage() {
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-gray-500" />
                                 <span className="font-medium">{booking.userName}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  asChild
+                                  className="text-purple-600 hover:text-purple-800"
+                                >
+                                  <Link href={`/profesional/historial-cliente/${booking.userId}`}>
+                                    Ver Historial
+                                  </Link>
+                                </Button>
                               </div>
 
                               <div className="space-y-1">
@@ -343,8 +433,34 @@ export default function MiAgendaPage() {
                               {booking.notes && (
                                 <div className="mt-2 p-2 bg-yellow-50 rounded border-l-4 border-yellow-400">
                                   <p className="text-sm text-yellow-800">
-                                    <strong>Nota:</strong> {booking.notes}
+                                    <strong>Nota inicial:</strong> {booking.notes}
                                   </p>
+                                </div>
+                              )}
+
+                              {booking.treatmentNotes && (
+                                <div className="mt-2 p-3 bg-green-50 rounded border-l-4 border-green-400">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm text-green-800 font-medium">
+                                        <strong>Notas del Tratamiento:</strong>
+                                      </p>
+                                      <p className="text-sm text-green-700 mt-1">
+                                        {booking.treatmentNotes.notes}
+                                      </p>
+                                      <p className="text-xs text-green-600 mt-1">
+                                        Por {booking.treatmentNotes.addedByName} - {new Date(booking.treatmentNotes.addedAt).toLocaleString('es-ES')}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openNotesModal(booking)}
+                                      className="text-green-600 hover:text-green-800"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -359,6 +475,18 @@ export default function MiAgendaPage() {
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Completar
+                              </Button>
+                            )}
+                            
+                            {booking.status === 'completed' && !booking.treatmentNotes && (
+                              <Button
+                                onClick={() => openNotesModal(booking)}
+                                size="sm"
+                                variant="outline"
+                                className="text-green-600 border-green-600 hover:bg-green-50"
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Agregar Notas
                               </Button>
                             )}
                             
@@ -384,6 +512,56 @@ export default function MiAgendaPage() {
           </div>
         </div>
       )}
+
+      {/* Modal para agregar/editar notas del tratamiento */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {selectedBooking?.treatmentNotes ? 'Editar' : 'Agregar'} Notas del Tratamiento
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-2">
+                Cliente: <strong>{selectedBooking?.userName}</strong>
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                Fecha: <strong>{selectedBooking ? new Date(selectedBooking.date).toLocaleDateString('es-ES') : ''} - {selectedBooking?.timeSlot}</strong>
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="treatment-notes">Notas del tratamiento realizado *</Label>
+              <Textarea
+                id="treatment-notes"
+                placeholder="Describe el tratamiento realizado, observaciones, recomendaciones, etc..."
+                rows={4}
+                value={treatmentNotes}
+                onChange={(e) => setTreatmentNotes(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={saveTreatmentNotes}
+                disabled={isSavingNotes || !treatmentNotes.trim()}
+              >
+                {isSavingNotes ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

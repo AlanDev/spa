@@ -30,6 +30,13 @@ export interface IBooking extends Document {
   };
   // Notas adicionales
   notes?: string;
+  // Notas del tratamiento realizado (nuevo campo)
+  treatmentNotes?: {
+    notes: string;
+    addedAt: Date;
+    addedBy: mongoose.Types.ObjectId; // ID del profesional que agregó las notas
+    addedByName: string; // Nombre del profesional
+  };
   // Restricciones de reserva
   reservedAt: Date; // cuándo se hizo la reserva
   canModify: boolean; // si puede modificarse (48hs antes)
@@ -69,6 +76,12 @@ const BookingSchema: Schema = new Schema(
       receiptSent: { type: Boolean, default: false },
     },
     notes: { type: String },
+    treatmentNotes: {
+      notes: { type: String },
+      addedAt: { type: Date },
+      addedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      addedByName: { type: String },
+    },
     reservedAt: { type: Date, default: Date.now },
     canModify: { type: Boolean, default: true },
   },
