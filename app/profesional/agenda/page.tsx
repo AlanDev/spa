@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import PrintBookings from "@/components/print-bookings";
 
 interface Booking {
   _id: string;
@@ -277,6 +278,14 @@ export default function MiAgendaPage() {
             >
               Este mes
             </Button>
+            {bookings.length > 0 && (
+              <PrintBookings 
+                bookings={bookings}
+                professionalName={`${user?.firstName} ${user?.lastName}`}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            )}
           </div>
           
           {/* Selector de rango de fechas */}
