@@ -45,14 +45,35 @@ export default function PrintBookings({ bookings, professionalName, startDate, e
   };
 
   const formatDateDisplay = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      if (!dateString || typeof dateString !== 'string') {
+        return 'Fecha no válida';
+      }
+      
+      const [year, month, day] = dateString.split('-').map(Number);
+      
+      // Verificar que los valores sean válidos
+      if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        return 'Fecha no válida';
+      }
+      
+      const date = new Date(year, month - 1, day);
+      
+      // Verificar que la fecha sea válida
+      if (isNaN(date.getTime())) {
+        return 'Fecha no válida';
+      }
+      
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Fecha no válida';
+    }
   };
 
   const getTotalDuration = (services: Booking['services']) => {
@@ -72,7 +93,14 @@ export default function PrintBookings({ bookings, professionalName, startDate, e
   const groupBookingsByDate = () => {
     const grouped: { [key: string]: Booking[] } = {};
     bookings.forEach((booking) => {
-      const dateKey = booking.date;
+      // Normalizar la fecha para usar como clave
+      let dateKey = booking.date;
+      
+      // Si es una fecha ISO con hora, extraer solo la fecha
+      if (typeof booking.date === 'string' && booking.date.includes('T')) {
+        dateKey = booking.date.split('T')[0];
+      }
+      
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
@@ -108,7 +136,9 @@ export default function PrintBookings({ bookings, professionalName, startDate, e
       
       // Período
       doc.setFontSize(12);
-      doc.text(`Período: ${new Date(startDate).toLocaleDateString('es-ES')} - ${new Date(endDate).toLocaleDateString('es-ES')}`, 105, 40, { align: 'center' });
+      const formatStartDate = startDate ? formatDateDisplay(startDate) : 'Fecha no disponible';
+      const formatEndDate = endDate ? formatDateDisplay(endDate) : 'Fecha no disponible';
+      doc.text(`Período: ${formatStartDate} - ${formatEndDate}`, 105, 40, { align: 'center' });
       
       // Fecha de generación
       doc.setFontSize(10);
