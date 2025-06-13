@@ -240,7 +240,6 @@ interface IBusinessConfig {
 ### Prerrequisitos
 - Node.js 18+
 - MongoDB
-- Cuenta de Clerk
 
 ### Variables de Entorno
 Crear archivo `.env.local`:
